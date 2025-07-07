@@ -74,6 +74,9 @@ export default function App() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    setLoading(true);
+    if (!input.trim()) return;
+
     const userMessage = { role: 'user', content: input };
     const thinkingMessage = { role: 'bot', content: 'Thinking...' };
 
