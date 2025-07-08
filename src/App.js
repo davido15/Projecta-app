@@ -46,7 +46,7 @@ export default function App() {
 
   // Fetch projects on mount
   useEffect(() => {
-    axios.get('http://127.0.0.1:5000/projects')
+    axios.get('https://projecta-2.onrender.com/projects')
       .then(res => {
         setProjects(res.data);
         if (res.data.length > 0) {
@@ -58,7 +58,7 @@ export default function App() {
   // Fetch messages for selected project
   useEffect(() => {
     if (selectedProjectId != null) {
-      axios.get(`http://127.0.0.1:5000/projects/${selectedProjectId}/messages`)
+      axios.get(`https://projecta-2.onrender.com/projects/${selectedProjectId}/messages`)
         .then(res => setMessages(res.data))
         .catch(err => console.error('Failed to load messages', err));
     } else {
@@ -87,7 +87,7 @@ export default function App() {
     setInput('');
 
     try {
-      const response = await axios.post('http://127.0.0.1:5000/format', {
+      const response = await axios.post('https://projecta-2.onrender.com/format', {
         update: currentInput, // match your backend
       });
 
@@ -110,7 +110,7 @@ export default function App() {
 
   const handleSubscribe = async () => {
     try {
-      const res = await axios.post('http://127.0.0.1:5000/create-checkout-session');
+      const res = await axios.post('https://projecta-2.onrender.com/create-checkout-session');
       window.location.href = res.data.url;
     } catch (err) {
       alert('Subscription failed.');
@@ -119,7 +119,7 @@ export default function App() {
 
   const handleNewProject = async () => {
     try {
-      const res = await axios.post('http://127.0.0.1:5000/projects', { name: `Project ${projects.length + 1}` });
+      const res = await axios.post('https://projecta-2.onrender.com/projects', { name: `Project ${projects.length + 1}` });
       setProjects(prev => [...prev, res.data]);
       setSelectedProjectId(res.data.id);
     } catch (err) {
