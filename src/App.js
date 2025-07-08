@@ -18,8 +18,44 @@ function formatBotMessage(content) {
     .join('<br/>');
 }
 
+function ActionItemsList({ items }) {
+  return (
+    <ul style={{ paddingLeft: 24, margin: '12px 0' }}>
+      {items.map((item, idx) => (
+        <li key={idx} style={{ marginBottom: 12 }}>
+          <span style={{ fontWeight: 'bold' }}>{item.title}</span>: {item.description}
+          {item.responsible && (
+            <span style={{ fontStyle: 'italic', marginLeft: 8 }}>({item.responsible})</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Message({ role, content }) {
   if (role === 'bot') {
+    // Try to parse as action items JSON array
+    let actionItems = null;
+    if (typeof content === 'string') {
+      try {
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed) && parsed.length && parsed[0].title && parsed[0].description) {
+          actionItems = parsed;
+        }
+      } catch (e) { /* not JSON, fallback */ }
+    }
+    if (actionItems) {
+      return (
+        <div className={`message ${role}`} style={{ background: 'none' }}>
+          <span className="role-label">AI</span>
+          <div className={`bubble ${role}`} style={{ background: 'none', color: '#222', boxShadow: 'none' }}>
+            <ActionItemsList items={actionItems} />
+          </div>
+        </div>
+      );
+    }
+    // fallback to normal bot message
     return (
       <div className={`message ${role}`} style={{ background: 'none' }}>
         <span className="role-label">AI</span>
@@ -46,7 +82,7 @@ export default function App() {
 
   // Fetch projects on mount
   useEffect(() => {
-    axios.get('https://projecta-2.onrender.com/projects')
+    axios.get('http://127.0.0.1:3000/projects')
       .then(res => {
         setProjects(res.data);
         if (res.data.length > 0) {
@@ -58,7 +94,7 @@ export default function App() {
   // Fetch messages for selected project
   useEffect(() => {
     if (selectedProjectId != null) {
-      axios.get(`https://projecta-2.onrender.com/projects/${selectedProjectId}/messages`)
+      axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`)
         .then(res => setMessages(res.data))
         .catch(err => console.error('Failed to load messages', err));
     } else {
@@ -71,46 +107,51 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Function to reload messages from backend
+  const reloadMessages = async () => {
+    if (!selectedProjectId) return;
+    try {
+      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      setMessages(res.data);
+    } catch (err) {
+      setMessages([]);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
-
     setLoading(true);
-    if (!input.trim()) return;
-
     const userMessage = { role: 'user', content: input };
-    const thinkingMessage = { role: 'bot', content: 'Thinking...' };
-
-    // Show user's message and 'Thinking...' at once
+    const thinkingMessage = { role: 'bot', content: '⏳ Formatting your update...' };
     setMessages(prev => [...prev, userMessage, thinkingMessage]);
-
     const currentInput = input;
     setInput('');
-
+    const project = projects.find(p => p.id === selectedProjectId);
+    const projectName = project ? project.name : '';
     try {
-      const response = await axios.post('https://projecta-2.onrender.com/format', {
-        update: currentInput, // match your backend
+      const response = await axios.post('http://127.0.0.1:3000/format', {
+        update: currentInput,
+        project_id: selectedProjectId,
+        project_name: projectName,
       });
-
-      // Replace 'Thinking...' with real response
       setMessages(prev => {
-        // Remove the last message ('Thinking...')
         const updated = prev.slice(0, -1);
-        // Add real response
-        return [...updated, { role: 'bot', content: response.data.formatted }];
+        const aiContent = response.data.formatted || response.data.message || "No response from backend.";
+        return [...updated, { role: 'bot', content: aiContent }];
       });
     } catch (error) {
-      console.error('Error sending message:', error);
-      // Replace 'Thinking...' with error
       setMessages(prev => {
         const updated = prev.slice(0, -1);
         return [...updated, { role: 'bot', content: 'Error getting response.' }];
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubscribe = async () => {
     try {
-      const res = await axios.post('https://projecta-2.onrender.com/create-checkout-session');
+      const res = await axios.post('http://127.0.0.1:3000/create-checkout-session');
       window.location.href = res.data.url;
     } catch (err) {
       alert('Subscription failed.');
@@ -118,12 +159,134 @@ export default function App() {
   };
 
   const handleNewProject = async () => {
+    const name = prompt("Enter a name for your new project:");
+    if (!name) return;
     try {
-      const res = await axios.post('https://projecta-2.onrender.com/projects', { name: `Project ${projects.length + 1}` });
+      const res = await axios.post('http://127.0.0.1:3000/projects', { name });
       setProjects(prev => [...prev, res.data]);
       setSelectedProjectId(res.data.id);
     } catch (err) {
       alert('Failed to create project.');
+    }
+  };
+
+  const summarizeProject = async () => {
+    if (!selectedProjectId) return;
+    // Gather all messages for the current project
+    const project = projects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    try {
+      // Fetch all messages for the project
+      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const allMessages = res.data.join('\n');
+      // Send to backend for summary
+      const summaryRes = await axios.post('http://127.0.0.1:3000/summarize', { update: allMessages });
+      setMessages(prev => [...prev, { role: 'bot', content: summaryRes.data.summary || 'No summary available.' }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'bot', content: 'Error summarizing project.' }]);
+    }
+  };
+
+  const generateProjectPlan = async () => {
+    if (!selectedProjectId) return;
+    const project = projects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    try {
+      // Fetch all messages for the project
+      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const allMessages = res.data.join('\n');
+      // Send to backend for project plan
+      const planRes = await axios.post('http://127.0.0.1:3000/project-plan', {
+        update: allMessages,
+        project_name: project.name,
+      });
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: planRes.data.plan || 'No project plan available.' }
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: 'Error generating project plan.' }
+      ]);
+    }
+  };
+
+  const extractActionItems = async () => {
+    if (!selectedProjectId) return;
+    const project = projects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    try {
+      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const allMessages = res.data.join('\n');
+      const itemsRes = await axios.post('http://127.0.0.1:3000/action-items', {
+        update: allMessages,
+        project_name: project.name,
+      });
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: JSON.stringify(itemsRes.data.action_items) } // Store as JSON string
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: 'Error extracting action items.' }
+      ]);
+    }
+  };
+
+  const analyzeSentiment = async () => {
+    if (!selectedProjectId) return;
+    const project = projects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    try {
+      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const allMessages = res.data.join('\n');
+      const sentimentRes = await axios.post('http://127.0.0.1:3000/sentiment', {
+        update: allMessages,
+        project_name: project.name,
+      });
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: sentimentRes.data.sentiment || 'No sentiment found.' }
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: 'Error analyzing sentiment.' }
+      ]);
+    }
+  };
+
+  // Update generateEmail to use sentiment
+  const generateEmail = async () => {
+    if (!selectedProjectId) return;
+    const project = projects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    try {
+      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const allMessages = res.data.join('\n');
+      // Get sentiment first
+      const sentimentRes = await axios.post('http://127.0.0.1:3000/sentiment', {
+        update: allMessages,
+        project_name: project.name,
+      });
+      const sentiment = sentimentRes.data.sentiment || '';
+      // Send to backend for email generation
+      const emailRes = await axios.post('http://127.0.0.1:3000/generate-email', {
+        update: allMessages,
+        project_name: project.name,
+        sentiment,
+      });
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: emailRes.data.email || 'No email generated.' }
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: 'Error generating email.' }
+      ]);
     }
   };
 
@@ -133,7 +296,24 @@ export default function App() {
 
   return (
     <div className="gpt-root">
-      <aside className="gpt-sidebar">
+      {/* MVP Demo Banner */}
+      <div style={{
+        width: '100%',
+        background: '#fffbe6',
+        color: '#b26a00',
+        padding: '12px 0',
+        textAlign: 'center',
+        fontWeight: 600,
+        fontSize: '1rem',
+        borderBottom: '2px solid #ffe082',
+        zIndex: 1000,
+        position: 'fixed',
+        top: 0,
+        left: 0
+      }}>
+        🚧 This is an MVP demo. Data will be lost if the server restarts. Please try the features and share your feedback! 🚧
+      </div>
+      <aside className="gpt-sidebar" style={{ marginTop: 48 }}>
         <div className="gpt-sidebar-header">
           <span className="gpt-logo">🧑‍💻</span>
           <span className="gpt-title">AI Project Assistant</span>
@@ -168,9 +348,34 @@ export default function App() {
           </button>
         </div>
       </aside>
-      <main className="gpt-main">
+      <main className="gpt-main" style={{ marginTop: 48 }}>
         <header className="gpt-header-bar">
           <span className="gpt-header-title">AI Project Assistant</span>
+          {filteredProjects.find(p => p.id === selectedProjectId) && (
+            <span style={{ marginLeft: 20, fontWeight: 'bold', color: '#1976d2' }}>
+              Project: {filteredProjects.find(p => p.id === selectedProjectId)?.name}
+            </span>
+          )}
+          {selectedProjectId && (
+            <>
+              <button style={{ marginLeft: 20, padding: '4px 12px', background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                onClick={summarizeProject}>
+                Summarize Project
+              </button>
+              <button style={{ marginLeft: 10, padding: '4px 12px', background: '#ff9800', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                onClick={extractActionItems}>
+                Extract Action Items
+              </button>
+              <button style={{ marginLeft: 10, padding: '4px 12px', background: '#0097a7', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                onClick={analyzeSentiment}>
+                Analyze Sentiment
+              </button>
+              <button style={{ marginLeft: 10, padding: '4px 12px', background: '#6a1b9a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                onClick={generateEmail}>
+                Generate Email
+              </button>
+            </>
+          )}
         </header>
         <h1 className="gpt-chat-title">
           {filteredProjects.find(p => p.id === selectedProjectId)?.name || 'AI Chat'}
