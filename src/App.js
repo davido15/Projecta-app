@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
+import ReactMarkdown from 'react-markdown';
 
 function formatBotMessage(content) {
   // Split by lines, format each line
@@ -59,7 +60,9 @@ function Message({ role, content }) {
     return (
       <div className={`message ${role}`} style={{ background: 'none' }}>
         <span className="role-label">AI</span>
-        <div className={`bubble ${role}`} style={{ background: 'none', color: '#222', boxShadow: 'none' }} dangerouslySetInnerHTML={{ __html: formatBotMessage(content) }} />
+        <div className={`bubble ${role}`} style={{ background: 'none', color: '#222', boxShadow: 'none' }}>
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
       </div>
     );
   }
@@ -80,7 +83,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const chatEndRef = useRef(null);
 
-  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+  const BACKEND_URL = 'http://127.0.0.1:3001';
 
   // Fetch projects on mount
   useEffect(() => {
@@ -220,14 +223,16 @@ export default function App() {
     if (!project) return;
     try {
       const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
-      const allMessages = res.data.join('\n');
+      // Join all message contents into a single string
+      const allMessages = res.data.map(msg => msg.content).join('\n');
       const itemsRes = await axios.post(`${BACKEND_URL}/action-items`, {
         update: allMessages,
         project_name: project.name,
+        project_id: selectedProjectId,
       });
       setMessages(prev => [
         ...prev,
-        { role: 'bot', content: JSON.stringify(itemsRes.data.action_items) } // Store as JSON string
+        { role: 'bot', content: itemsRes.data.action_items }
       ]);
     } catch (err) {
       setMessages(prev => [
@@ -243,10 +248,12 @@ export default function App() {
     if (!project) return;
     try {
       const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
-      const allMessages = res.data.join('\n');
+      // FIX: Extract message content before joining
+      const allMessages = res.data.map(msg => msg.content).join('\n');
       const sentimentRes = await axios.post(`${BACKEND_URL}/sentiment`, {
         update: allMessages,
         project_name: project.name,
+        project_id: selectedProjectId,
       });
       setMessages(prev => [
         ...prev,
