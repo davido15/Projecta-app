@@ -39,6 +39,16 @@ Instead, it will copy all the configuration files and the transitive dependencie
 
 You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
+## Configuring the Backend URL
+
+To change the backend API URL, edit the `.env` file in the project root:
+
+```
+REACT_APP_BACKEND_URL=https://your-backend-url.com
+```
+
+This variable is used by the React app to connect to the backend API.
+
 ## Learn More
 
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).

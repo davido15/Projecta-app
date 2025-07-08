@@ -80,9 +80,11 @@ export default function App() {
   const [search, setSearch] = useState('');
   const chatEndRef = useRef(null);
 
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+
   // Fetch projects on mount
   useEffect(() => {
-    axios.get('http://127.0.0.1:3000/projects')
+    axios.get(`${BACKEND_URL}/projects`)
       .then(res => {
         setProjects(res.data);
         if (res.data.length > 0) {
@@ -94,7 +96,7 @@ export default function App() {
   // Fetch messages for selected project
   useEffect(() => {
     if (selectedProjectId != null) {
-      axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`)
+      axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`)
         .then(res => setMessages(res.data))
         .catch(err => console.error('Failed to load messages', err));
     } else {
@@ -111,7 +113,7 @@ export default function App() {
   const reloadMessages = async () => {
     if (!selectedProjectId) return;
     try {
-      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
       setMessages(res.data);
     } catch (err) {
       setMessages([]);
@@ -129,7 +131,7 @@ export default function App() {
     const project = projects.find(p => p.id === selectedProjectId);
     const projectName = project ? project.name : '';
     try {
-      const response = await axios.post('http://127.0.0.1:3000/format', {
+      const response = await axios.post(`${BACKEND_URL}/format`, {
         update: currentInput,
         project_id: selectedProjectId,
         project_name: projectName,
@@ -151,7 +153,7 @@ export default function App() {
 
   const handleSubscribe = async () => {
     try {
-      const res = await axios.post('http://127.0.0.1:3000/create-checkout-session');
+      const res = await axios.post(`${BACKEND_URL}/create-checkout-session`);
       window.location.href = res.data.url;
     } catch (err) {
       alert('Subscription failed.');
@@ -162,7 +164,7 @@ export default function App() {
     const name = prompt("Enter a name for your new project:");
     if (!name) return;
     try {
-      const res = await axios.post('http://127.0.0.1:3000/projects', { name });
+      const res = await axios.post(`${BACKEND_URL}/projects`, { name });
       setProjects(prev => [...prev, res.data]);
       setSelectedProjectId(res.data.id);
     } catch (err) {
@@ -177,10 +179,10 @@ export default function App() {
     if (!project) return;
     try {
       // Fetch all messages for the project
-      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
       const allMessages = res.data.join('\n');
       // Send to backend for summary
-      const summaryRes = await axios.post('http://127.0.0.1:3000/summarize', { update: allMessages });
+      const summaryRes = await axios.post(`${BACKEND_URL}/summarize`, { update: allMessages });
       setMessages(prev => [...prev, { role: 'bot', content: summaryRes.data.summary || 'No summary available.' }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'bot', content: 'Error summarizing project.' }]);
@@ -193,10 +195,10 @@ export default function App() {
     if (!project) return;
     try {
       // Fetch all messages for the project
-      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
       const allMessages = res.data.join('\n');
       // Send to backend for project plan
-      const planRes = await axios.post('http://127.0.0.1:3000/project-plan', {
+      const planRes = await axios.post(`${BACKEND_URL}/project-plan`, {
         update: allMessages,
         project_name: project.name,
       });
@@ -217,9 +219,9 @@ export default function App() {
     const project = projects.find(p => p.id === selectedProjectId);
     if (!project) return;
     try {
-      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
       const allMessages = res.data.join('\n');
-      const itemsRes = await axios.post('http://127.0.0.1:3000/action-items', {
+      const itemsRes = await axios.post(`${BACKEND_URL}/action-items`, {
         update: allMessages,
         project_name: project.name,
       });
@@ -240,9 +242,9 @@ export default function App() {
     const project = projects.find(p => p.id === selectedProjectId);
     if (!project) return;
     try {
-      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
       const allMessages = res.data.join('\n');
-      const sentimentRes = await axios.post('http://127.0.0.1:3000/sentiment', {
+      const sentimentRes = await axios.post(`${BACKEND_URL}/sentiment`, {
         update: allMessages,
         project_name: project.name,
       });
@@ -264,16 +266,16 @@ export default function App() {
     const project = projects.find(p => p.id === selectedProjectId);
     if (!project) return;
     try {
-      const res = await axios.get(`http://127.0.0.1:3000/projects/${selectedProjectId}/messages`);
+      const res = await axios.get(`${BACKEND_URL}/projects/${selectedProjectId}/messages`);
       const allMessages = res.data.join('\n');
       // Get sentiment first
-      const sentimentRes = await axios.post('http://127.0.0.1:3000/sentiment', {
+      const sentimentRes = await axios.post(`${BACKEND_URL}/sentiment`, {
         update: allMessages,
         project_name: project.name,
       });
       const sentiment = sentimentRes.data.sentiment || '';
       // Send to backend for email generation
-      const emailRes = await axios.post('http://127.0.0.1:3000/generate-email', {
+      const emailRes = await axios.post(`${BACKEND_URL}/generate-email`, {
         update: allMessages,
         project_name: project.name,
         sentiment,
