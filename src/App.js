@@ -83,7 +83,8 @@ export default function App() {
   const [search, setSearch] = useState('');
   const chatEndRef = useRef(null);
 
-  const BACKEND_URL = 'http://127.0.0.1:3001';
+  // Use environment variable for backend URL
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://127.0.0.1:3001';
 
   // Fetch projects on mount
   useEffect(() => {
