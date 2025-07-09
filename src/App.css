@@ -289,3 +289,88 @@ body, .App, .gpt-root {
   color: #2563eb;
   font-weight: 700;
 }
+
+/* Responsive styles for mobile */
+@media (max-width: 768px) {
+  .gpt-root {
+    flex-direction: column;
+  }
+  .gpt-sidebar {
+    width: 100%;
+    min-width: 0;
+    box-shadow: none;
+    padding: 0 0 1rem 0;
+    position: static;
+    border-bottom: 1px solid #d1d5db;
+  }
+  .gpt-sidebar-header {
+    padding: 1rem 1rem 1rem 1rem;
+    font-size: 1rem;
+  }
+  .gpt-sidebar-nav {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .gpt-main {
+    padding: 0 0.5rem 0 0.5rem;
+  }
+  .gpt-header-bar {
+    margin-bottom: 1rem;
+    height: 48px;
+    font-size: 1rem;
+  }
+  .chat-container, .input-area {
+    max-width: 100%;
+    width: 100%;
+  }
+  .bubble {
+    max-width: 95%;
+    font-size: 0.97rem;
+    padding: 0.75rem 1rem;
+  }
+  .input-area button {
+    padding: 0 1rem;
+    font-size: 0.97rem;
+  }
+  .gpt-search-input {
+    font-size: 0.97rem;
+    padding: 0.5rem 0.8rem;
+  }
+  .gpt-project-item {
+    font-size: 0.97rem;
+    padding: 0.5rem 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .gpt-sidebar-header {
+    font-size: 0.95rem;
+    padding: 0.7rem 0.7rem 0.7rem 0.7rem;
+  }
+  .gpt-title {
+    font-size: 0.95rem;
+  }
+  .gpt-logo {
+    font-size: 1.5rem;
+  }
+  .gpt-header-bar {
+    font-size: 0.95rem;
+    height: 40px;
+  }
+  .gpt-main {
+    padding: 0 0.2rem 0 0.2rem;
+  }
+  .bubble {
+    font-size: 0.93rem;
+    padding: 0.6rem 0.7rem;
+  }
+  .input-area textarea {
+    font-size: 0.93rem;
+    padding: 0.7rem;
+    min-height: 36px;
+  }
+  .input-area button {
+    font-size: 0.93rem;
+    padding: 0 0.7rem;
+  }
+}
