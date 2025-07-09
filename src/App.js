@@ -84,7 +84,7 @@ export default function App() {
   const chatEndRef = useRef(null);
 
   // Use environment variable for backend URL
-  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://127.0.0.1:3001';
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://35.188.164.16:5001';
 
   // Fetch projects on mount
   useEffect(() => {
